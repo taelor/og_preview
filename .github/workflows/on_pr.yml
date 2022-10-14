@@ -1,0 +1,67 @@
+name: "PR Workflow"
+on:
+  - pull_request
+  - workflow_dispatch
+
+jobs:
+  test:
+    name: OG Preview Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_HOST: postgres
+
+    steps:
+      - name: checkout og_preview
+        uses: actions/checkout@v3
+      
+      - name: elixir
+        uses: actions/setup-elixir@v1
+        with:
+          otp-version: 25.0.2
+          elixir-version: 1.13.4
+          experimental-otp: true
+
+      - name: dps cache
+        uses: actions/cache@v2
+        id: mix-cache
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-
+      
+      - name: deps get/compile
+        if: steps.mix-cache.outputs.cache-hit != 'true'
+        env: 
+          MIX_ENV: test
+        run: |
+          mix local.rebar --force
+          mix local.hex --force
+          mix deps.get
+          mix deps.compile
+      
+      - name: mix compile
+        env: 
+          MIX_ENV: test
+        run: mix compile --force --warnings-as-errors
+
+      - name: mix test
+        run: mix test

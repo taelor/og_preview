@@ -23,13 +23,21 @@ defmodule OgPreview.UrlProcessor do
   end
 
   defp process_data(data) do
-    {url, _from} = data
+    {url, from} = data
 
-    OgPreview.ProcessUrl.call(url)
+    {:ok, url} = OgPreview.ProcessUrl.call(url)
+
+    publish_image(from, url)
   end
 
   def transform(event, _),
     do: %Message{data: event, acknowledger: {__MODULE__, :ack_id, :ack_data}}
 
   def ack(_, _, _), do: :ok
+
+  defp publish_image(from, %{image: nil, url: url}),
+    do: Phoenix.PubSub.broadcast(OgPreview.PubSub, "og_preview:#{from}", {:no_image, url})
+
+  defp publish_image(from, %{image: image}),
+    do: Phoenix.PubSub.broadcast(OgPreview.PubSub, "og_preview:#{from}", {:image, image})
 end

@@ -10,6 +10,14 @@ mix test
 mix phx.server
 ```
 
+# Approach
+
+While reading through the requirements, I thought first from the client, to the web server, to the job processor, and finally the call to the URL to get the metadata.
+
+I knew I wanted the front end to be LiveView, since I've taken the time to implement anything with it. I also knew for the async processing, I would probalby want to use Broadway, backed by a custom GenStage Queue. Finally, I knew I wanted to have a module or two that would take a URL, and get the OpenGraph (OG) metadata, as well as any long term storage I wanted to do.
+
+So since I was thinking about it from the client -> in, I wanted to implement it from the backend -> out, kind of in reverse.
+
 # OG-1 - Application and Repo Setup
 
 I created application with this command: "mix phx.new og_preview --live --no-mailer --umbrella --binary-id"
@@ -110,3 +118,27 @@ NaiveDateTime.diff(last.updated_at, first.inserted_at)
 ```
 
 Next I messed around with the broadway concurrency, settled on 32. Probably means nothing, because that just on my machine, and I'm actually rocking a 2014 MacBook Pro dual core. But I would think most of the time spent waiting is on the HTTP call, not IO, its fine to crank up the concurrency that high.
+
+# OG-5 - PhoenixLiveView and PubSub
+
+Wow, this was actually really easy. I have never used LiveView before, and honestly, haven't used much of phoenix. I've mainly done Phoenix with GraphQL/Absinthe, or just raw plug with REST.
+
+So the first thing I did was hit up the documentation, read the overviews and getting start guide.
+
+And then a few more blog posts, and I was able to submit URLs and get them processed.
+
+After getting them processed, I needed a way to push back to the LiveView, the new url information.
+
+I didn't realize that the LiveView was going to just be a process/GenServer, where you could use PubSub to subscribe to messages, and write a `handle_info/3` callback to recieve those messages, and then the reply would notify the client. Its honestly really amazing how easy it was.
+
+One thing that did trip me up, was not being able to just use a pid with the Phoenix PubSub, I had to use a topic. But I needed a way to make sure that the topic was specific to a given person. I figured the easiest way to do that was just to use a UUID. So I could generate it when mounting the LiveView, and send it with the url that needed to be processed. But I bet I could just skip the Phoenix PubSub, and use something like `Process.send()` with the pid instead.
+
+# Final Thoughs
+
+I don't know how much of this is fully production ready. I only wrote a handlful of tests, didn't include any typespecs, only did some error handling here and there, all in the interest of timeboxing. But I hope I showed you enough here and there to convince you that I know what I would do to harden this system.
+
+The one main piece that I do think could be a good MVP for production is the data pipeline with the GenStage Producer and Broadway Consumer. I don't think it could scale to 1 million users right off the bat, but I do think its a pretty good implementation that could get pretty far.
+
+One thing that I would implement would be some sort of cache implementation using ETS. You could have an ets table, with the key being the URL entered, and the value being the image url. That was, when a user enters a URL, you could just hit in-memory first, and see if its there. If so return it, if not, pass through to the async processing, and once the processing stored the image in postgres, you could store it in ETS as well. You could even return the cache first and still pass through to update in the background, and push a new image if something had changed. All kinds of options.
+
+This was a really fun exercise, and I appreciate the opportunity to submit it for review. I would love to answer any and all questions sometime soon!

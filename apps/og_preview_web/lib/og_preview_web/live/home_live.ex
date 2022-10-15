@@ -3,7 +3,7 @@ defmodule OgPreviewWeb.HomeLive do
 
   alias OgPreview.UrlQueue
 
-  def mount(_params, session, socket) do
+  def mount(_params, _session, socket) do
     id = Ecto.UUID.generate()
 
     Phoenix.PubSub.subscribe(OgPreview.PubSub, "og_preview:#{id}")

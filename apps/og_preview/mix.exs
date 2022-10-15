@@ -42,7 +42,8 @@ defmodule OgPreview.MixProject do
       {:jason, "~> 1.2"},
       {:opengraph_parser, "~> 0.3.0"},
       {:httpoison, "~> 1.8"},
-      {:mox, "~> 1.0"}
+      {:mox, "~> 1.0"},
+      {:broadway, "~> 1.0"}
     ]
   end
 

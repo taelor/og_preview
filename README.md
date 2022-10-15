@@ -61,3 +61,52 @@ Next, I wanted to write a module that would take care of finding a URL if it exi
 
 Add some more testing (including some factories and named setups), and this part is good to go.
 
+# OG-4 - Async Processing with Broadway
+
+Next step in the process is to build the system so that it can handle processing these Urls async. I already know from past experience, I would like to use Broadway. I also want to make a trade off for simplicity, by just using a custom GenStage producer, instead of getting something like amazon sqs or anything else setup. One, for time sake. Two, for ease of use for you getting this system up and running.
+
+One other thing I would like to point out about choosing Broadway. We can implement our in-memory event message queue now, but later it would be very easy to change out to something more durable, like SQS or Kafka, with minimal change to our Broadway configuration.
+
+Now as for the producer implementation, I'll be honest, I usually just rip off docs, and edit it to my own needs. I've found this implementation to be fantastic in the past.
+
+https://hexdocs.pm/gen_stage/GenStage.html#module-buffering-demand
+
+I would love to talk more about how this works. 
+
+When desiging this even queue, one of the things I want to send into queue, is not just the URL, but the PID its coming from. I'm still not entirely sure how the PhoenixLiveView part of this is all going to work, but I'm guessing that I'll have a pid of the current connection/request coming in, so hopefully I can push a message somewhere with the image url, generate the image tag with that url, and then ideally that gets pushed up to the client. We'll see soon enough.
+
+I haven't found a really good way of testing a system like this, though I know Broadway has DummyProducers as a way to test a processor. So at this point I decided to go ahead and just try some things in `iex`. 
+
+First I wanted to get a list of URLs which I found here: https://gist.github.com/burtonator/edf30fa64506455cf9d6694b072c662d
+
+I then kept track of some scratch code, which you can see here:
+
+```
+import Ecto.Query
+
+alias OgPreview.Url
+alias OgPreview.Repo
+alias OgPreview.UrlQueue
+
+UrlQueue.enqueue("https://www.getluna.com/", self())
+
+Url |> Repo.delete_all
+
+urls = File.read!("apps/og_preview/test/support/urls.txt") |> String.split("\n")
+
+Enum.each(urls, fn url -> UrlQueue.enqueue(url, self()) end)
+
+Url |> Repo.aggregate(:count)
+
+Url |> where(status: "processed") |> Repo.aggregate(:count)
+
+Url |> where([u], not is_nil(u.image)) |> Repo.aggregate(:count)
+
+first = Url |> order_by([asc: :inserted_at]) |> limit(1) |> Repo.one
+
+last = Url |> order_by([desc: :updated_at]) |> limit(1) |> Repo.one
+
+NaiveDateTime.diff(last.updated_at, first.inserted_at)
+```
+
+Next I messed around with the broadway concurrency, settled on 32. Probably means nothing, because that just on my machine, and I'm actually rocking a 2014 MacBook Pro dual core. But I would think most of the time spent waiting is on the HTTP call, not IO, its fine to crank up the concurrency that high.

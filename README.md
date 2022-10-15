@@ -40,3 +40,24 @@ Next I needed to decide on a HTTP library to use. I tend to like something with 
 As for testing, I implemented both a mock (via mox) and an integration test. In the past, I have aliases for `mix test` and `mix test.integration`, that look for the `@tag integration: true`. `mix test` will run everything mocked, and `mix test.integration` will run without mocks. For time's sake, I'm just running them all in that test file, I only wanted to show the difference in my testing approaches.
 
 I will also be skipping typespec for this assignment, but normally I use them and even include running mix dialyze as part of my github action.
+
+# OG-3 - Store URL and OG metadata
+
+Furthering the idea of building from the back out to the front, the next thing I wanted to build is the storing of URL metadata in the database.
+
+Intitally, I wasn't even going to use postgres to store the URL metadata and just store things in memory using GenServer state or ETS, considering the app doesn't really need that. 
+
+But if this were a real application, with expanded features, we might want longer term storage that could survive restarts (though, technically you could use something like DETS to survive restarts). So I wanted to just show a little bit of Ecto, make sure I showed the importance of indexing, etc.
+
+So first, I created the schema.
+
+```
+mix phx.gen.schema Url urls url:string image:string status:string
+```
+
+I'm already regretting naming the schema Url, with a field url...
+
+Next, I wanted to write a module that would take care of finding a URL if it exists, updating it if needed, or inserting one if not already there. One assumption I made: if a URL had already been processed, and we got a request to re-process it, but it errored out, not to update anything, and just return what was already there.
+
+Add some more testing (including some factories and named setups), and this part is good to go.
+

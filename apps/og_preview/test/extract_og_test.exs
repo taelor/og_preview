@@ -1,5 +1,6 @@
 defmodule OgPreview.ExtractOgTest do
-  use OgPreview.DataCase, async: true
+  # needed to set to false since there is Application environment variable manipulation
+  use OgPreview.DataCase, async: false
 
   import Mox
 

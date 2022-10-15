@@ -8,12 +8,9 @@ defmodule OgPreview.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      # Start the Ecto repository
       OgPreview.Repo,
-      # Start the PubSub system
-      {Phoenix.PubSub, name: OgPreview.PubSub}
-      # Start a worker by calling: OgPreview.Worker.start_link(arg)
-      # {OgPreview.Worker, arg}
+      {Phoenix.PubSub, name: OgPreview.PubSub},
+      {OgPreview.UrlProcessor, []}
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one, name: OgPreview.Supervisor)

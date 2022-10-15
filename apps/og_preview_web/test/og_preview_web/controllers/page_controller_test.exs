@@ -3,6 +3,6 @@ defmodule OgPreviewWeb.PageControllerTest do
 
   test "GET /", %{conn: conn} do
     conn = get(conn, "/")
-    assert html_response(conn, 200) =~ "Welcome to Phoenix!"
+    assert html_response(conn, 200) =~ "<h1>OG Preview</h1>"
   end
 end

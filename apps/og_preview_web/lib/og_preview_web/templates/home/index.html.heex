@@ -1,0 +1,11 @@
+<form phx-change="preview" class="preview-form">
+  <%= text_input :preview, :url, placeholder: "Enter URL", autofocus: true, "phx-debounce": "300" %>
+</form>
+
+<%= if @image do %>
+  <img src={@image} />
+<% end %>
+
+<%= if @no_image do %>
+  No Image Found at <%= @no_image %>
+<% end %>
